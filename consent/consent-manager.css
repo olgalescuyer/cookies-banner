@@ -6,7 +6,7 @@
   --fontFamily: var(--_typography---body);
   --primaryColor: #ffffff;
   --backgroundColor: #141413;
-  --textColor: #f4f0df;
+  --textColor: #ffffff;
   --backdropBackgroundColor: #00000077;
   --backdropBackgroundBlur: 0px;
   --iconColor: #141413;
@@ -98,7 +98,7 @@ Banner
   background-color: var(--backgroundColor);
   box-sizing: border-box;
   padding: 32px;
-  border-radius: 12px;
+  border-radius: 0px;
   pointer-events: auto;
   border: 0px;
   position: fixed;
@@ -375,8 +375,9 @@ Modal - Switches
   font-weight: 500;
   color: var(--backgroundColor);
   position: absolute;
-  top: 5px;
+  top: 50%;
   right: 8px;
+  transform: translateY(-50%);
   transition:
     right 150ms ease-out,
     opacity 150ms ease-out;
