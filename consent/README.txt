@@ -1,0 +1,81 @@
+Consent Manager Installation Instructions
+
+Add the following code to your HTML page, inside the <head> tag:
+
+<!-- Cookies Banner -->
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+
+<!-- Consent CSS -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/olgalescuyer/cookie-banner@v1.0.0/consent/consent-manager.css" />
+
+<!-- 1. Consent defaults — localStorage keys updated to cm. -->
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag() {
+    dataLayer.push(arguments);
+  }
+  gtag('consent', 'default', {
+    analytics_storage: localStorage.getItem('cm.consent.analytics') === 'true' ? 'granted' : 'denied',
+    ad_storage: localStorage.getItem('cm.consent.marketing') === 'true' ? 'granted' : 'denied',
+    ad_user_data: localStorage.getItem('cm.consent.marketing') === 'true' ? 'granted' : 'denied',
+    ad_personalization: localStorage.getItem('cm.consent.marketing') === 'true' ? 'granted' : 'denied',
+    functionality_storage: localStorage.getItem('cm.consent.essential') === 'true' ? 'granted' : 'denied',
+    security_storage: localStorage.getItem('cm.consent.essential') === 'true' ? 'granted' : 'denied',
+  });
+</script>
+
+<!-- 2. Consent Manager JS -->
+<script src="https://cdn.jsdelivr.net/gh/olgalescuyer/cookie-banner@v1.0.0/consent/consent-manager.js"></script>
+
+<!-- 3. Init -->
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    window.consentManager.init({
+      policyUrl: 'https://www.mu.se/content/privacy-policy',
+      backdrop: { show: true },
+      icon: { position: 'bottomLeft' },
+      prompt: { position: 'bottomRight' },
+      consentTypes: [
+        {
+          id: 'essential',
+          label: 'Essentiels',
+          description: '<p>These cookies are necessary for the website to function properly and cannot be switched off. They help with things like logging in and setting your privacy preferences.</p>',
+          required: true,
+        },
+        {
+          id: 'analytics',
+          label: 'Statistiques',
+          description: '<p>These cookies help us improve the site by tracking which pages are most popular and how visitors move around the site.</p>',
+          defaultValue: false,
+          gtag: 'analytics_storage',
+        },
+        {
+          id: 'marketing',
+          label: 'Marketing',
+          description: '<p>These cookies are used by us and our advertising partners to show you relevant ads on this site and elsewhere, and to measure how those campaigns perform.</p>',
+          defaultValue: false,
+          gtag: ['ad_storage', 'ad_user_data', 'ad_personalization'],
+        },
+      ],
+      text: {
+        prompt: {
+            description: "<p>We use cookies on our site to enhance your user experience, provide personalized content, and analyze our traffic.</p>",
+            acceptAllButtonText: "Accept all",
+            acceptAllButtonAccessibleLabel: "Accept all cookies",
+            rejectNonEssentialButtonText: "Reject non-essential",
+            rejectNonEssentialButtonAccessibleLabel: "Reject all non-essential cookies",
+            preferencesButtonText: "Preferences",
+            preferencesButtonAccessibleLabel: "Toggle preferences"
+            },
+            preferences: {
+            title: "Customize your cookie preferences",
+            description: "<p>We respect your right to privacy. You can choose not to allow some types of cookies. Your cookie preferences will apply across our website.</p>",
+            saveButtonText: "Save and close",
+            saveButtonAccessibleLabel: "Save your cookie preferences"
+          }
+      },
+    });
+  });
+</script>
+
+<!-- 4. Google tag (gtag.js) -->
