@@ -423,17 +423,6 @@ Modal - Footer
   margin-top: 24px;
 }
 
-#cm-modal footer a.cm-policy-link {
-  margin-left: auto;
-  color: var(--primaryColor);
-  text-decoration: none;
-  font-size: 14px;
-}
-
-#cm-modal footer a.cm-policy-link:hover {
-  text-decoration: underline;
-}
-
 @media (min-width: 600px) {
   #cm-modal footer {
     flex-direction: row;
@@ -447,14 +436,14 @@ Cookie Icon
 #cm-icon {
   display: none;
   position: fixed;
-  bottom: 1.25rem;
-  left: var(--site--margin);
+  bottom: 10px;
+  left: 10px;
   justify-content: center;
   align-items: center;
-  width: 2.75rem;
-  height: 2.75rem;
+  width: 60px;
+  height: 60px;
   border-radius: 50%;
-  padding: 0.5rem;
+  padding: 0px;
   border: none;
   background-color: var(--iconColor);
   cursor: pointer;
