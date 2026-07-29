@@ -3,9 +3,9 @@
 -------------------------------- */
 #cm-wrapper {
   --boxShadow: -5px 5px 10px 0px #00000012, 0px 0px 50px 0px #0000001a;
-  --fontFamily: var(--_typography---font--primary-family);
-  --primaryColor: #fffaf3;
-  --backgroundColor: #232323;
+  --fontFamily: var(--_typography---body);
+  --primaryColor: #000000;
+  --backgroundColor: #141413;
   --textColor: #f4f0df;
   --backdropBackgroundColor: #00000077;
   --backdropBackgroundBlur: 0px;
