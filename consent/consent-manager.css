@@ -464,8 +464,12 @@ Cookie Icon
 
 /* --------------------------------
 Gated Embeds (click-to-load third-party iframes)
-Lives outside #cm-wrapper (inline in page content), so it declares its
-own fallback custom properties instead of inheriting #cm-wrapper's.
+Lives outside #cm-wrapper, nested inside arbitrary page content (e.g. a
+Webflow rich-text block) instead — the rest of the widget never has to
+compete with host-page CSS, this does. Text/background colors use
+!important so a host stylesheet's own `.w-richtext p` (or similar)
+rules, which can tie or beat our selectors on specificity, can't make
+the notice's text invisible against its background.
 -------------------------------- */
 .cm-embed {
   --embedBackgroundColor: #141413;
@@ -479,15 +483,16 @@ own fallback custom properties instead of inheriting #cm-wrapper's.
   align-items: flex-start;
   gap: 12px;
   padding: 24px;
-  background-color: var(--embedBackgroundColor);
-  color: var(--embedTextColor);
+  background-color: var(--embedBackgroundColor) !important;
+  color: var(--embedTextColor) !important;
   border-radius: 8px;
 }
 
 .cm-embed-notice p {
-  margin: 0;
+  margin: 0 !important;
   font-size: 14px;
   line-height: 20px;
+  color: inherit !important;
 }
 
 .cm-embed-actions {
@@ -498,8 +503,8 @@ own fallback custom properties instead of inheriting #cm-wrapper's.
 }
 
 .cm-embed-consent-btn {
-  color: var(--embedBackgroundColor);
-  background-color: var(--embedPrimaryColor);
+  color: var(--embedBackgroundColor) !important;
+  background-color: var(--embedPrimaryColor) !important;
   border: 2px solid var(--embedPrimaryColor);
   padding: 8px 16px;
   font-size: 14px;
@@ -509,14 +514,14 @@ own fallback custom properties instead of inheriting #cm-wrapper's.
 }
 
 .cm-embed-consent-btn:hover {
-  background-color: var(--embedTextColor);
-  color: var(--embedBackgroundColor);
+  background-color: var(--embedTextColor) !important;
+  color: var(--embedBackgroundColor) !important;
   opacity: 0.85;
 }
 
 .cm-embed-preferences-btn {
-  color: var(--embedTextColor);
-  background-color: transparent;
+  color: var(--embedTextColor) !important;
+  background-color: transparent !important;
   border: none;
   padding: 0;
   font-size: 14px;

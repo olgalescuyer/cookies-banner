@@ -116,7 +116,7 @@ For this, wrap the embed in a placeholder instead of an `<iframe>` directly:
 ```html
 <div class="cm-embed" data-consent-id="analytics" data-consent-embed-src="https://musescore.com/embed/...">
   <div class="cm-embed-notice">
-    <p>This content requires Statistics cookies to load.</p>
+    <p>If you'd like to view this embedded content, accept Statistics cookies below.</p>
     <div class="cm-embed-actions">
       <button type="button" class="cm-embed-consent-btn">Accept &amp; load</button>
       <button type="button" class="cm-embed-preferences-btn">Manage preferences</button>
@@ -131,7 +131,29 @@ For this, wrap the embed in a placeholder instead of an `<iframe>` directly:
   - `.cm-embed-preferences-btn` ("Manage preferences", optional) calls `toggleModal(true)` to open the exact same preferences modal used by the banner/cookie icon, for anyone who wants to review every category rather than fast-accept just this one. Saving from there works too, since the modal's save handler always sends a full per-type map through `batchUpdateConsents`.
 - Accepting the same consent type from the main banner/modal also loads any pending embeds for it — `_activateGatedEmbeds(consentId)` runs from the same `_injectConsentScripts` call as the script mechanisms above.
 - `data-consent-embed-title` / `data-consent-embed-allow` are optional and copied onto the resulting `<iframe>`'s `title` / `allow` attributes.
-- The auto-gated path (`_prepareAutoEmbeds`, below) generates this same notice automatically, reusing the consent type's own `description` text (already authored for the modal) instead of requiring per-embed copy.
+- The auto-gated path (`_prepareAutoEmbeds`, below) generates this same notice automatically via `_getEmbedNoticeText(consentType)`.
+
+### Placeholder copy (`_getEmbedNoticeText`)
+
+Deliberately **not** the consent type's `description` — that's written for the full preferences modal ("we use cookies to track which pages are popular"), which is true but useless context for "why is this specific video hidden." Default text:
+
+> If you'd like to view this embedded content, accept {{label}} cookies below.
+
+`{{label}}` is replaced with the consent type's `label` (e.g. "Statistics"). Override site-wide via:
+
+```js
+window.consentManager.init({
+  // ...
+  text: {
+    embed: { description: "Your custom copy with {{label}} as a placeholder." },
+    // ...
+  },
+});
+```
+
+### Styling isolation
+
+`.cm-embed` is the only part of this widget that lives *inside* arbitrary page content (a Webflow rich-text block, for example) instead of inside `#cm-wrapper`. That means it's the only part exposed to a host stylesheet's own rules — e.g. Webflow's `.w-richtext p` color rules ties with `.cm-embed-notice p` on specificity, and source order decided the host page won, rendering the notice text invisible against its own dark background. `.cm-embed-notice`, its `p`, and both buttons set `color`/`background-color` with `!important` specifically to guard against this — the rest of the widget doesn't need to, since nothing else is nested inside page content.
 
 **Bug note:** `batchUpdateConsents` used to assume its input always covers *every* configured consent type (true for the banner/modal callers, which build a full map). The embed button's `batchUpdateConsents({ [consentId]: true })` call is a partial map — before the fix, every omitted type registered as "changing to `undefined`," and `setConsentChoice` threw calling `.toString()` on `undefined`, silently aborting the whole function before it ever reached the code that loads the iframe (the button appeared to do nothing). `batchUpdateConsents` now skips any type not present in the passed object, so partial updates work.
 

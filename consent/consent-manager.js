@@ -219,6 +219,19 @@ class ConsentManager {
     });
   }
 
+  // Embed-specific placeholder copy — deliberately NOT the consent type's
+  // `description` (that's written for the full preferences modal, e.g. "we
+  // use cookies to track which pages are popular" — accurate but useless
+  // context for "why is this specific video hidden"). Override the default
+  // via config.text.embed.description; {{label}} is replaced with the
+  // consent type's label (e.g. "Statistics").
+  _getEmbedNoticeText(consentType) {
+    const template =
+      this.config.text?.embed?.description ||
+      "If you'd like to view this embedded content, accept {{label}} cookies below.";
+    return template.replace(/\{\{label\}\}/g, consentType.label || consentType.id);
+  }
+
   // ----------------------------------------------------------------
   // Auto-gated Embeds — for CMS editors who can't author custom markup
   // ----------------------------------------------------------------
@@ -278,14 +291,8 @@ class ConsentManager {
 
         const notice = document.createElement('div');
         notice.className = 'cm-embed-notice';
-        // Reuse the consent type's own description (already authored for
-        // the preferences modal) instead of generic placeholder copy, so
-        // editors don't have to write this text per-embed.
-        const description =
-          consentType.description ||
-          `<p>This content requires "${consentType.label || consentType.id}" cookies to load.</p>`;
         notice.innerHTML = `
-          ${description}
+          <p>${this._getEmbedNoticeText(consentType)}</p>
           <div class="cm-embed-actions">
             <button type="button" class="cm-embed-consent-btn">Accept &amp; load</button>
             <button type="button" class="cm-embed-preferences-btn">Manage preferences</button>
@@ -320,7 +327,7 @@ class ConsentManager {
   // immediately regardless of this mechanism).
   //   <div class="cm-embed" data-consent-id="analytics" data-consent-embed-src="https://musescore.com/embed/...">
   //     <div class="cm-embed-notice">
-  //       <p>This content requires Statistics cookies to load.</p>
+  //       <p>If you'd like to view this embedded content, accept Statistics cookies below.</p>
   //       <div class="cm-embed-actions">
   //         <button type="button" class="cm-embed-consent-btn">Accept &amp; load</button>
   //         <button type="button" class="cm-embed-preferences-btn">Manage preferences</button>
