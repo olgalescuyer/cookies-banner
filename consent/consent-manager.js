@@ -278,9 +278,18 @@ class ConsentManager {
 
         const notice = document.createElement('div');
         notice.className = 'cm-embed-notice';
+        // Reuse the consent type's own description (already authored for
+        // the preferences modal) instead of generic placeholder copy, so
+        // editors don't have to write this text per-embed.
+        const description =
+          consentType.description ||
+          `<p>This content requires "${consentType.label || consentType.id}" cookies to load.</p>`;
         notice.innerHTML = `
-          <p>This content requires "${consentType.label || consentType.id}" cookies to load.</p>
-          <button type="button" class="cm-embed-consent-btn">Accept &amp; load</button>
+          ${description}
+          <div class="cm-embed-actions">
+            <button type="button" class="cm-embed-consent-btn">Accept &amp; load</button>
+            <button type="button" class="cm-embed-preferences-btn">Manage preferences</button>
+          </div>
         `;
 
         iframe.replaceWith(wrapper);
@@ -312,9 +321,15 @@ class ConsentManager {
   //   <div class="cm-embed" data-consent-id="analytics" data-consent-embed-src="https://musescore.com/embed/...">
   //     <div class="cm-embed-notice">
   //       <p>This content requires Statistics cookies to load.</p>
-  //       <button type="button" class="cm-embed-consent-btn">Accept &amp; load</button>
+  //       <div class="cm-embed-actions">
+  //         <button type="button" class="cm-embed-consent-btn">Accept &amp; load</button>
+  //         <button type="button" class="cm-embed-preferences-btn">Manage preferences</button>
+  //       </div>
   //     </div>
   //   </div>
+  // .cm-embed-preferences-btn is optional — opens the same #cm-modal used
+  // everywhere else (toggleModal(true)) for anyone who wants to review all
+  // categories instead of fast-accepting just this one.
   // Optional: data-consent-embed-title / data-consent-embed-allow are copied
   // onto the resulting <iframe>'s title / allow attributes (manual case only
   // — the auto-gated case above preserves the original iframe's attributes
@@ -337,6 +352,14 @@ class ConsentManager {
         },
         { once: true },
       );
+
+      // Opens the same preferences modal used everywhere else, for anyone
+      // who wants to review/adjust all categories rather than fast-accept
+      // just the one this embed needs.
+      const preferencesBtn = embed.querySelector('.cm-embed-preferences-btn');
+      preferencesBtn?.addEventListener('click', () => {
+        this.toggleModal(true);
+      });
     });
   }
 
@@ -525,6 +548,10 @@ class ConsentManager {
     let needsReload = false;
 
     this.config.consentTypes.forEach((type) => {
+      // Only diff types actually present in consentStates, so partial
+      // updates (e.g. accepting just one type from an embed placeholder)
+      // don't register every omitted type as changing to `undefined`.
+      if (!(type.id in consentStates)) return;
       const newState = consentStates[type.id];
       const previousState = this.getConsentChoice(type.id);
       if (newState !== previousState) {

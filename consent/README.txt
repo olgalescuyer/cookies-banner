@@ -49,8 +49,9 @@ Add the following code to your HTML page, inside the <head> tag:
           defaultValue: false,
           gtag: 'analytics_storage',
           // Domains matched against iframe[data-consent-src] elsewhere on the
-          // page (e.g. MuseScore score embeds in blog posts) — see step 6.
-          embedHosts: ['musescore.com'],
+          // page (e.g. MuseScore score embeds, audio.com audio players in
+          // blog posts) — see step 6.
+          embedHosts: ['musescore.com', 'audio.com'],
         },
         {
           id: 'marketing',
@@ -93,15 +94,20 @@ Add the following code to your HTML page, inside the <head> tag:
 </script>
 
 <!-- 6. Third-party embeds inside page content (e.g. a MuseScore score player
-     pasted into a blog post). A plain <iframe src="..."> can't be gated
-     after the fact — the browser fetches it during HTML parsing, before any
-     script runs. The only required edit when pasting the embed is renaming
-     src to data-consent-src; consent-manager.js matches its hostname against
-     each consent type's embedHosts (see "analytics" above) and shows a
-     click-to-load placeholder until that type is accepted. See
-     HOW_IT_WORKS.md → "Auto-gated Embeds". -->
+     or an audio.com audio player pasted into a blog post). A plain
+     <iframe src="..."> can't be gated after the fact — the browser fetches
+     it during HTML parsing, before any script runs. The only required edit
+     when pasting the embed is renaming src to data-consent-src;
+     consent-manager.js matches its hostname against each consent type's
+     embedHosts (see "analytics" above) and shows a click-to-load
+     placeholder until that type is accepted. See HOW_IT_WORKS.md →
+     "Auto-gated Embeds". -->
 <!--
 <iframe data-consent-src="https://musescore.com/user/19710/scores/87402/embed"
         title="Étude Opus 10 No. 4 in C♯ Minor"
         allow="autoplay; fullscreen"></iframe>
+
+<iframe data-consent-src="https://audio.com/..."
+        title="..."
+        allow="autoplay"></iframe>
 -->
