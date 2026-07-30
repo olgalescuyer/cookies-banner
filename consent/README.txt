@@ -48,6 +48,17 @@ Add the following code to your HTML page, inside the <head> tag:
           description: '<p>These cookies help us improve the site by tracking which pages are most popular and how visitors move around the site.</p>',
           defaultValue: false,
           gtag: 'analytics_storage',
+          // Spark Hire Recruit (formerly Comeet) candidate source attribution cookie.
+          // https://developers.comeet.com/reference/cookies-consent
+          onAccept: function () {
+            var enable = function () {
+              window.COMEET.set('candidate-source-storage', true);
+            };
+            window.COMEET ? enable() : (window.comeetUpdate = enable);
+          },
+          onReject: function () {
+            if (window.COMEET) window.COMEET.set('candidate-source-storage', false);
+          },
         },
         {
           id: 'marketing',
