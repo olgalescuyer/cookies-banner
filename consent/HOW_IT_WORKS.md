@@ -107,6 +107,56 @@ Any `<script type="text/plain" data-consent-id="<typeId>">` tag anywhere in the 
 
 Caveat: this only gates code *you* control in the page's own markup. A third-party embed's *own* `<script src="...">` (e.g. the widget that renders the actual Spark Hire job listings) still runs unconditionally wherever it's placed — this mechanism can't reach into it. If a vendor's cookies are set as a side effect of that unconditional script loading (rather than through a call you can defer, like Comeet's `.set()`), the only way to gate them is to defer the *entire* embed via the `scripts` array above, which may not be viable if the embed is needed to render page content regardless of consent.
 
+## Gated embeds — cross-origin iframes (`cm-embed`)
+
+Some third-party content isn't a script at all — it's a **cross-origin `<iframe>`** (a MuseScore score player, YouTube, Vimeo, etc.). Neither `scripts` injection nor `data-consent-id` script activation can reach inside a separate origin's browsing context, so any cookies that origin's server sets happen the instant the iframe's `src` loads — regardless of consent. The only way to gate those cookies is to withhold the `src` itself until consent is granted.
+
+For this, wrap the embed in a placeholder instead of an `<iframe>` directly:
+
+```html
+<div class="cm-embed" data-consent-id="analytics" data-consent-embed-src="https://musescore.com/embed/...">
+  <div class="cm-embed-notice">
+    <p>This content requires Statistics cookies to load.</p>
+    <button type="button" class="cm-embed-consent-btn">Accept &amp; load</button>
+  </div>
+</div>
+```
+
+- If that consent type is already accepted (returning visitor), `setupEmbedGating()` (called once from the constructor) loads it immediately — no placeholder shown.
+- Otherwise the placeholder renders, and clicking `.cm-embed-consent-btn` grants that one consent type (`batchUpdateConsents({ [consentId]: true })`) and loads the iframe.
+- Accepting the same consent type from the main banner/modal also loads any pending embeds for it — `_activateGatedEmbeds(consentId)` runs from the same `_injectConsentScripts` call as the script mechanisms above.
+- `data-consent-embed-title` / `data-consent-embed-allow` are optional and copied onto the resulting `<iframe>`'s `title` / `allow` attributes.
+
+### When a CMS editor can only paste the vendor's own embed code
+
+Hand-authoring the full `.cm-embed` structure above isn't realistic for most CMS workflows (Webflow content editors, etc.) — they paste whatever `<iframe>` snippet the third party (MuseScore, YouTube...) gives them, as-is.
+
+Important constraint: **no purely after-the-fact JS scan can stop a live `<iframe src="...">` from loading** — not even a `MutationObserver`. Browsers begin fetching an iframe's `src` the moment the HTML parser inserts the element into the DOM, which happens before any deferred or `DOMContentLoaded`-scheduled script runs. By the time our code could inspect the element, the request (and any cookies from its response) has typically already fired — which is exactly why the MuseScore cookies showed up in DevTools with nothing dynamic having happened yet. There is no attribute you can *add* to a live `src` that retroactively makes the browser wait.
+
+The one unavoidable step is renaming the attribute that triggers the fetch, so the browser never sees a real `src` in the first place:
+
+```html
+<!-- editor pastes this — the only edit is src → data-consent-src -->
+<iframe data-consent-src="https://musescore.com/embed/..." title="..." allow="..."></iframe>
+```
+
+Everything else is centralized in config instead of per-embed markup, via `embedHosts` on a consent type:
+
+```js
+{
+  id: 'analytics',
+  label: 'Statistiques',
+  embedHosts: ['musescore.com'],
+  // ...
+}
+```
+
+`_prepareAutoEmbeds()` (called once from the constructor, before `setupEmbedGating()`) scans for `iframe[data-consent-src]`, matches each one's hostname against every consent type's `embedHosts`, and — if it matches — transforms it into the exact same `.cm-embed` structure described above (auto-generating the notice/button), which then flows through the identical `setupEmbedGating()` / `_activateGatedEmbeds()` logic. One attribute rename per embed, zero other markup, and the domain→consent mapping lives in one place a developer controls.
+
+If even that one rename isn't achievable (a fully locked-down embed block that only accepts the vendor's unmodified code), pre-load gating isn't achievable client-side at all — the realistic fallback is the same as the Incapsula case: document the cookies as an unavoidable consequence of the embedded third-party service rather than attempting to block them.
+
+Styling lives in `.cm-embed` / `.cm-embed-notice` / `.cm-embed-consent-btn` in `consent-manager.css`. Since this markup sits inline in page content (not inside `#cm-wrapper`), it declares its own fallback custom properties (`--embedBackgroundColor`, `--embedTextColor`, `--embedPrimaryColor`) rather than inheriting `#cm-wrapper`'s.
+
 ## UI structure & positioning
 
 - `icon.position`: `'bottomLeft' | 'bottomRight'` (CSS class `cm-pos-bottom-left` / `cm-pos-bottom-right`).

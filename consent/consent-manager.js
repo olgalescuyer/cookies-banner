@@ -34,6 +34,8 @@ class ConsentManager {
     }
 
     this.setupEventListeners();
+    this._prepareAutoEmbeds();
+    this.setupEmbedGating();
     this.runConsentCallbacksOnLoad();
   }
 
@@ -196,6 +198,7 @@ class ConsentManager {
       });
     }
     this._activateInertScripts(consentType.id);
+    this._activateGatedEmbeds(consentType.id);
   }
 
   // Activates inline `<script type="text/plain" data-consent-id="...">` tags
@@ -214,6 +217,166 @@ class ConsentManager {
       newScript.text = oldScript.text;
       oldScript.replaceWith(newScript);
     });
+  }
+
+  // ----------------------------------------------------------------
+  // Auto-gated Embeds — for CMS editors who can't author custom markup
+  // ----------------------------------------------------------------
+  // IMPORTANT: no purely after-the-fact JS scan (not even a MutationObserver)
+  // can reliably stop a plain `<iframe src="https://...">` from loading —
+  // browsers begin fetching an iframe's src the moment the HTML parser
+  // inserts it, which happens before any deferred/DOMContentLoaded script
+  // runs. There is no way to add "consent required" behavior to a *live*
+  // src attribute after the fact; the attribute that triggers the fetch has
+  // to not exist yet when the tag is authored.
+  //
+  // So the one unavoidable manual step, done once when pasting a CMS embed,
+  // is renaming that attribute so the browser never sees a real `src`:
+  //   <iframe data-consent-src="https://musescore.com/embed/...">
+  // Everything else — which domains need which consent type, and the
+  // placeholder UI — is centralized in config instead of per-embed markup,
+  // via `embedHosts` on a consentType:
+  //   { id: 'analytics', embedHosts: ['musescore.com'], ... }
+  // On init, any `iframe[data-consent-src]` whose hostname matches an
+  // `embedHosts` entry is transformed into the same `.cm-embed` structure
+  // documented below, and flows through the identical gating logic.
+  _prepareAutoEmbeds() {
+    document
+      .querySelectorAll('iframe[data-consent-src]:not([data-consent-wrapped])')
+      .forEach((iframe) => {
+        const src = iframe.dataset.consentSrc;
+        let hostname;
+        try {
+          hostname = new URL(src, window.location.href).hostname;
+        } catch (e) {
+          return;
+        }
+
+        const consentType = (this.config.consentTypes || []).find((type) =>
+          (type.embedHosts || []).some(
+            (host) => hostname === host || hostname.endsWith(`.${host}`),
+          ),
+        );
+        if (!consentType) return;
+
+        iframe.dataset.consentWrapped = 'true';
+        // Defensive: if an author left both src and data-consent-src on the
+        // same tag, the browser already fetched src before this ever ran —
+        // stripping it here only prevents a *second* load, it can't undo
+        // cookies the first request already set. src must not be present in
+        // the authored HTML at all for gating to actually work.
+        iframe.removeAttribute('src');
+        iframe.style.display = 'none';
+
+        // Keep the original iframe node (not a rebuilt copy) so every
+        // attribute the author set — id, width, height, frameborder,
+        // allowfullscreen, class, style, etc. — survives untouched; only
+        // `src` toggles between absent and `data-consent-src`'s value.
+        const wrapper = document.createElement('div');
+        wrapper.className = 'cm-embed';
+        wrapper.dataset.consentId = consentType.id;
+
+        const notice = document.createElement('div');
+        notice.className = 'cm-embed-notice';
+        notice.innerHTML = `
+          <p>This content requires "${consentType.label || consentType.id}" cookies to load.</p>
+          <button type="button" class="cm-embed-consent-btn">Accept &amp; load</button>
+        `;
+
+        iframe.replaceWith(wrapper);
+        wrapper.appendChild(notice);
+        wrapper.appendChild(iframe);
+      });
+  }
+
+  // ----------------------------------------------------------------
+  // Gated Embeds (cross-origin iframes) — click-to-load
+  // ----------------------------------------------------------------
+  // Third-party embeds that are themselves cross-origin iframes (e.g. a
+  // MuseScore score player, YouTube, Vimeo) run in a separate browsing
+  // context: neither `scripts` injection nor `_activateInertScripts` can
+  // reach inside them, so any cookies the iframe's own origin sets happen
+  // the instant its `src` loads — regardless of consent. The only way to
+  // gate those cookies is to withhold the `src` itself until consent is
+  // granted, showing a placeholder in the meantime.
+  //
+  // Manual usage — wrap the embed in HTML instead of an <iframe> (use this
+  // when you want custom placeholder copy per embed and there's no existing
+  // iframe tag to preserve). For the common case where a CMS editor just
+  // pastes a vendor's iframe snippet unmodified, see `_prepareAutoEmbeds`
+  // above instead — it keeps the original iframe (all its attributes:
+  // id, width, height, frameborder, allowfullscreen, ...) and only requires
+  // renaming `src` to `data-consent-src` (removing `src`, not adding
+  // `data-consent-src` alongside it — a leftover `src` still loads
+  // immediately regardless of this mechanism).
+  //   <div class="cm-embed" data-consent-id="analytics" data-consent-embed-src="https://musescore.com/embed/...">
+  //     <div class="cm-embed-notice">
+  //       <p>This content requires Statistics cookies to load.</p>
+  //       <button type="button" class="cm-embed-consent-btn">Accept &amp; load</button>
+  //     </div>
+  //   </div>
+  // Optional: data-consent-embed-title / data-consent-embed-allow are copied
+  // onto the resulting <iframe>'s title / allow attributes (manual case only
+  // — the auto-gated case above preserves the original iframe's attributes
+  // directly, no copying needed).
+
+  setupEmbedGating() {
+    const embeds = document.querySelectorAll('.cm-embed[data-consent-id]');
+    embeds.forEach((embed) => {
+      const consentId = embed.dataset.consentId;
+      if (this.getConsentChoice(consentId)) {
+        this._loadEmbed(embed);
+        return;
+      }
+      const consentBtn = embed.querySelector('.cm-embed-consent-btn');
+      consentBtn?.addEventListener(
+        'click',
+        () => {
+          this.setHasConsented();
+          this.batchUpdateConsents({ [consentId]: true });
+        },
+        { once: true },
+      );
+    });
+  }
+
+  _activateGatedEmbeds(consentId) {
+    const embeds = document.querySelectorAll(
+      `.cm-embed[data-consent-id="${consentId}"]:not([data-consent-loaded])`,
+    );
+    embeds.forEach((embed) => this._loadEmbed(embed));
+  }
+
+  _loadEmbed(container) {
+    if (container.dataset.consentLoaded) return;
+
+    // Auto-gated case (_prepareAutoEmbeds): the original <iframe> is already
+    // inside, hidden, with its real src stashed on data-consent-src. Reuse
+    // that same node so its other attributes are never lost.
+    const existingIframe = container.querySelector('iframe[data-consent-src]');
+    if (existingIframe) {
+      container.dataset.consentLoaded = 'true';
+      existingIframe.src = existingIframe.dataset.consentSrc;
+      existingIframe.style.display = '';
+      container.querySelector('.cm-embed-notice')?.remove();
+      return;
+    }
+
+    // Manual case: no pre-existing iframe, build one from data-consent-embed-*.
+    const src = container.dataset.consentEmbedSrc;
+    if (!src) return;
+
+    const iframe = document.createElement('iframe');
+    iframe.src = src;
+    iframe.loading = 'lazy';
+    if (container.dataset.consentEmbedTitle)
+      iframe.title = container.dataset.consentEmbedTitle;
+    if (container.dataset.consentEmbedAllow)
+      iframe.allow = container.dataset.consentEmbedAllow;
+
+    container.dataset.consentLoaded = 'true';
+    container.innerHTML = '';
+    container.appendChild(iframe);
   }
 
   _wasConsentRevoked(consentId, newState) {
