@@ -92,6 +92,21 @@ Everything lives in `localStorage` (guarded — if it's unavailable, the manager
 - Supported per-script options: `url` (required), `load: 'async' | 'defer'`, `type`, `crossorigin`, `integrity`.
 - There is no mechanism to remove an injected script tag on rejection — that's why revoking a previously-granted, script-bearing consent triggers a full page reload instead.
 
+## Inline scripts authored directly in the page (`data-consent-id`)
+
+Not every third-party integration is a loadable `<script src>` — some (like Spark Hire Recruit/Comeet's source-attribution call, `window.COMEET.set(...)`) are a snippet that must run inline, wrapped in the page's own HTML. For these, `consent-manager.js` supports the same "inert until consented" pattern used by tools like Cookiebot/Usercentrics:
+
+```html
+<script type="text/plain" data-consent-id="analytics">
+  // runs only after the "analytics" consent type is accepted
+  window.COMEET.set('candidate-source-storage', true);
+</script>
+```
+
+Any `<script type="text/plain" data-consent-id="<typeId>">` tag anywhere in the document is left inert by the browser. `_activateInertScripts(consentId)` finds matching tags and swaps them for a real, executing `<script>` (copying all attributes except `type`) whenever that consent type becomes accepted — called from `_injectConsentScripts`, so it runs at the same points as external script injection: on user acceptance (`batchUpdateConsents`) and on every page load for already-accepted/required types (`runConsentCallbacksOnLoad`).
+
+Caveat: this only gates code *you* control in the page's own markup. A third-party embed's *own* `<script src="...">` (e.g. the widget that renders the actual Spark Hire job listings) still runs unconditionally wherever it's placed — this mechanism can't reach into it. If a vendor's cookies are set as a side effect of that unconditional script loading (rather than through a call you can defer, like Comeet's `.set()`), the only way to gate them is to defer the *entire* embed via the `scripts` array above, which may not be viable if the embed is needed to render page content regardless of consent.
+
 ## UI structure & positioning
 
 - `icon.position`: `'bottomLeft' | 'bottomRight'` (CSS class `cm-pos-bottom-left` / `cm-pos-bottom-right`).

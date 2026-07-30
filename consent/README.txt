@@ -48,17 +48,6 @@ Add the following code to your HTML page, inside the <head> tag:
           description: '<p>These cookies help us improve the site by tracking which pages are most popular and how visitors move around the site.</p>',
           defaultValue: false,
           gtag: 'analytics_storage',
-          // Spark Hire Recruit (formerly Comeet) candidate source attribution cookie.
-          // https://developers.comeet.com/reference/cookies-consent
-          onAccept: function () {
-            var enable = function () {
-              window.COMEET.set('candidate-source-storage', true);
-            };
-            window.COMEET ? enable() : (window.comeetUpdate = enable);
-          },
-          onReject: function () {
-            if (window.COMEET) window.COMEET.set('candidate-source-storage', false);
-          },
         },
         {
           id: 'marketing',
@@ -90,3 +79,12 @@ Add the following code to your HTML page, inside the <head> tag:
 </script>
 
 <!-- 4. Google tag (gtag.js) -->
+
+<!-- 5. Spark Hire Recruit (formerly Comeet) source attribution.
+     Kept inert (type="text/plain") until "analytics" consent is granted —
+     consent-manager.js scans for script[type="text/plain"][data-consent-id]
+     and activates matching tags on accept (see _activateInertScripts).
+     Ref: https://developers.comeet.com/reference/cookies-consent -->
+<script type="text/plain" data-consent-id="analytics">
+(function(){var a=function(){window.COMEET.set("candidate-source-storage",!0)};window.COMEET?a():window.comeetUpdate=a})();
+</script>

@@ -190,9 +190,29 @@ class ConsentManager {
   }
 
   _injectConsentScripts(consentType) {
-    if (!consentType.scripts || !Array.isArray(consentType.scripts)) return;
-    consentType.scripts.forEach((scriptConfig) => {
-      this._injectScript(scriptConfig, consentType.id);
+    if (consentType.scripts && Array.isArray(consentType.scripts)) {
+      consentType.scripts.forEach((scriptConfig) => {
+        this._injectScript(scriptConfig, consentType.id);
+      });
+    }
+    this._activateInertScripts(consentType.id);
+  }
+
+  // Activates inline `<script type="text/plain" data-consent-id="...">` tags
+  // authored directly in the page HTML (e.g. by a Webflow embed), mirroring
+  // how consent tools like Cookiebot/Usercentrics reactivate "text/plain"
+  // scripts once consent is granted.
+  _activateInertScripts(consentId) {
+    const inertScripts = document.querySelectorAll(
+      `script[type="text/plain"][data-consent-id="${consentId}"]`,
+    );
+    inertScripts.forEach((oldScript) => {
+      const newScript = document.createElement('script');
+      Array.from(oldScript.attributes).forEach((attr) => {
+        if (attr.name !== 'type') newScript.setAttribute(attr.name, attr.value);
+      });
+      newScript.text = oldScript.text;
+      oldScript.replaceWith(newScript);
     });
   }
 
