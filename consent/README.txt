@@ -49,9 +49,11 @@ Add the following code to your HTML page, inside the <head> tag:
           defaultValue: false,
           gtag: 'analytics_storage',
           // Domains matched against iframe[data-consent-src] elsewhere on the
-          // page (e.g. MuseScore score embeds, audio.com audio players in
-          // blog posts) — see step 6.
-          embedHosts: ['musescore.com', 'audio.com'],
+          // page (e.g. MuseScore score embeds, audio.com audio players,
+          // youtube-nocookie.com videos pasted as raw Code Embed elements —
+          // NOT Webflow's native Video element, which can't carry custom
+          // attributes) — see step 6.
+          embedHosts: ['musescore.com', 'audio.com', 'youtube-nocookie.com', 'youtube.com'],
         },
         {
           id: 'marketing',

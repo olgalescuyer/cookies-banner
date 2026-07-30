@@ -490,6 +490,13 @@ own fallback custom properties instead of inheriting #cm-wrapper's.
   line-height: 20px;
 }
 
+.cm-embed-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+}
+
 .cm-embed-consent-btn {
   color: var(--embedBackgroundColor);
   background-color: var(--embedPrimaryColor);
@@ -505,6 +512,21 @@ own fallback custom properties instead of inheriting #cm-wrapper's.
   background-color: var(--embedTextColor);
   color: var(--embedBackgroundColor);
   opacity: 0.85;
+}
+
+.cm-embed-preferences-btn {
+  color: var(--embedTextColor);
+  background-color: transparent;
+  border: none;
+  padding: 0;
+  font-size: 14px;
+  line-height: 20px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.cm-embed-preferences-btn:hover {
+  opacity: 0.8;
 }
 
 /* --------------------------------
