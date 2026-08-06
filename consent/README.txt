@@ -6,7 +6,16 @@ Add the following code to your HTML page, inside the <head> tag:
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 
 <!-- Consent CSS -->
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/<your-path>/consent/consent-manager.css" />
+<!-- integrity/crossorigin: Subresource Integrity, so the browser refuses to
+     run the file if jsdelivr/GitHub ever served something other than what
+     you approved. Compute the hash for your pinned tag with:
+       openssl dgst -sha384 -binary consent-manager.css | openssl base64 -A
+     Recompute and update both the URL's version tag AND this hash together
+     whenever you deploy a new release — the hash is tied to file content,
+     not to the version string, so a stale hash after a version bump makes
+     the browser block the file entirely. -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/<your-path>/consent/consent-manager.css"
+      integrity="sha384-<hash-for-this-version>" crossorigin="anonymous" />
 
 <!-- 1. Consent defaults — localStorage keys updated to cm. -->
 <script>
@@ -25,7 +34,10 @@ Add the following code to your HTML page, inside the <head> tag:
 </script>
 
 <!-- 2. Consent Manager JS -->
-<script src="https://cdn.jsdelivr.net/<your-path>/consent/consent-manager.js"></script>
+<!-- Same SRI note as the CSS tag above applies here — recompute the hash
+     for consent-manager.js whenever you bump the version tag. -->
+<script src="https://cdn.jsdelivr.net/<your-path>/consent/consent-manager.js"
+        integrity="sha384-<hash-for-this-version>" crossorigin="anonymous"></script>
 
 <!-- 3. Init -->
 <script>

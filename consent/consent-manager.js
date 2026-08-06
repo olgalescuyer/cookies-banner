@@ -1285,9 +1285,11 @@ class ConsentManager {
       );
       return;
     }
+    const UNSAFE_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
     function deepMerge(target, source) {
       const output = { ...target };
       for (const key in source) {
+        if (UNSAFE_KEYS.has(key)) continue;
         if (
           source[key] &&
           typeof source[key] === 'object' &&
