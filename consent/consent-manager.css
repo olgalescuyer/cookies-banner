@@ -3,7 +3,12 @@
 -------------------------------- */
 #cm-wrapper {
   --boxShadow: -5px 5px 10px 0px #00000012, 0px 0px 50px 0px #0000001a;
-  --fontFamily: var(--_typography---body);
+  /* Default fallback if no theme.fontFamily is passed to init() — a
+     no-network system font stack, never a Google Fonts (or other
+     third-party) reference. See HOW_IT_WORKS.md → "Fonts". */
+  --fontFamily:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial,
+    sans-serif;
   --primaryColor: #ffffff;
   --backgroundColor: #141413;
   --textColor: #ffffff;
@@ -11,6 +16,9 @@
   --backdropBackgroundBlur: 0px;
   --iconColor: #141413;
   --iconBackgroundColor: #ffffff;
+  /* Default fallback if no theme.iconOffset is passed to init() — a
+     generic spacing value, not tied to any host site's design system. */
+  --iconOffset: 20px;
   position: fixed;
   bottom: 0;
   right: 0;
@@ -136,6 +144,12 @@ Banner
 #cm-banner.cm-pos-bottom-left {
   bottom: 16px;
   left: 16px;
+  position: fixed;
+}
+
+#cm-banner.cm-pos-bottom-right {
+  bottom: 16px;
+  right: 16px;
   position: fixed;
 }
 
@@ -438,7 +452,7 @@ Cookie Icon
   display: none;
   position: fixed;
   bottom: 1.25rem;
-  right: var(--_utilities---axis--x-lg);
+  right: var(--iconOffset);
   justify-content: center;
   align-items: center;
   width: 2.75rem;
@@ -455,7 +469,12 @@ Cookie Icon
 
 #cm-icon.cm-pos-bottom-right {
   left: auto;
-  right: 10px;
+  right: var(--iconOffset);
+}
+
+#cm-icon.cm-pos-bottom-left {
+  right: auto;
+  left: var(--iconOffset);
 }
 
 #cm-icon svg {

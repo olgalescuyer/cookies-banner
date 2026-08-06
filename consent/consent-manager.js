@@ -414,6 +414,46 @@ class ConsentManager {
     return previousState === true && newState === false;
   }
 
+  // Actively deletes previously-set first-party cookies on revoke. Only
+  // possible for cookies on our own domain (e.g. gtag-set _ga/_ga_<id>) —
+  // a page can never read/write/delete another origin's cookies, so this
+  // has no effect on third-party cookies (Comeet, MuseScore, audio.com,
+  // YouTube), which can only be prevented pre-consent, never deleted after.
+  // consentType.firstPartyCookies: array of exact names and/or RegExp
+  // patterns (for dynamic suffixes like GA4's _ga_<container-id>).
+  _deleteFirstPartyCookies(consentType) {
+    if (
+      !consentType.firstPartyCookies ||
+      !Array.isArray(consentType.firstPartyCookies)
+    )
+      return;
+
+    const existingNames = document.cookie
+      .split(';')
+      .map((c) => c.split('=')[0].trim())
+      .filter(Boolean);
+
+    const namesToDelete = existingNames.filter((name) =>
+      consentType.firstPartyCookies.some((pattern) =>
+        pattern instanceof RegExp ? pattern.test(name) : pattern === name,
+      ),
+    );
+
+    namesToDelete.forEach((name) => {
+      // Cookie attributes (path/domain) aren't knowable from the name alone,
+      // so clear the common variants a script running on this page could
+      // plausibly have set: exact host, and the registrable parent domain
+      // (e.g. gtag sometimes scopes to .example.com rather than the host).
+      document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
+      document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=${window.location.hostname}`;
+      const parts = window.location.hostname.split('.');
+      if (parts.length > 2) {
+        const parentDomain = `.${parts.slice(-2).join('.')}`;
+        document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=${parentDomain}`;
+      }
+    });
+  }
+
   // ----------------------------------------------------------------
   // Wrapper
   // ----------------------------------------------------------------
@@ -421,6 +461,12 @@ class ConsentManager {
   createWrapper() {
     this.wrapper = document.createElement('div');
     this.wrapper.id = 'cm-wrapper';
+    if (this.config.theme?.fontFamily) {
+      this.wrapper.style.setProperty('--fontFamily', this.config.theme.fontFamily);
+    }
+    if (this.config.theme?.iconOffset) {
+      this.wrapper.style.setProperty('--iconOffset', this.config.theme.iconOffset);
+    }
     document.body.insertBefore(this.wrapper, document.body.firstChild);
   }
 
@@ -567,6 +613,7 @@ class ConsentManager {
         const wasRevoked = previousState === true && newState === false;
         const hadScripts = type.scripts?.length > 0;
         if (wasRevoked && hadScripts) needsReload = true;
+        if (wasRevoked) this._deleteFirstPartyCookies(type);
         if (type.gtag) {
           const gtagParams = Array.isArray(type.gtag) ? type.gtag : [type.gtag];
           const consentState = newState ? 'granted' : 'denied';

@@ -86,6 +86,19 @@ Everything lives in `localStorage` (guarded — if it's unavailable, the manager
 - At runtime, `triggerConsentIntegration` / `batchUpdateConsents` call `gtag('consent', 'update', ...)` whenever a mapped type's state changes, and on every page load via `runConsentCallbacksOnLoad` (so a returning visitor's prior choice is re-asserted to `gtag` each time, even without interacting with the banner).
 - A consent type can map to multiple gtag parameters at once (e.g. `marketing` → `ad_storage`, `ad_user_data`, `ad_personalization`).
 
+## What revoking consent does and doesn't do
+
+Revoking consent means "stop collecting/using data going forward," not "erase what was already collected":
+
+- **Cross-origin third-party cookies** (Comeet, MuseScore, audio.com, YouTube) **can never be deleted by this code, under any circumstances.** A page can only read/write/delete cookies for its own origin — that's a browser security boundary, not a gap in this implementation. All of the gating mechanisms above (`scripts`, `data-consent-id`, `embedHosts`) work by preventing the request that would set the cookie in the first place; once a third-party cookie is set, nothing client-side can remove it. Only the visitor manually clearing browser cookies does.
+- **`gtag('consent', 'update', {..., 'denied'})`** tells GA/Ads to stop *using* an existing cookie's value, but doesn't delete the cookie itself — it sits until its natural expiry.
+- **The `scripts`-array reload-on-revoke** (`needsReload` in `batchUpdateConsents`) is often mistaken for cookie deletion — it isn't. Reloading only stops the script from being *re-injected*, so tracking doesn't resume; any cookies it already set before the reload remain.
+- **`firstPartyCookies` on a consent type** is the one case where active deletion is actually possible: cookies set on *our own* domain (e.g. `_ga`/`_ga_<container-id>`, since `gtag.js` runs same-origin) can be deleted via `document.cookie`. `_deleteFirstPartyCookies(consentType)` runs automatically whenever `batchUpdateConsents` detects that type going from accepted → rejected. Accepts exact names and/or `RegExp` (for dynamic suffixes like GA4's per-property `_ga_<container-id>`):
+  ```js
+  { id: 'analytics', firstPartyCookies: ['_ga', /^_ga_/], ... }
+  ```
+  It clears each matching cookie across the exact hostname and the registrable parent domain (e.g. both `example.com` and `.example.com`), since the exact `path`/`domain` the cookie was originally set with isn't knowable from its name alone.
+
 ## Third-party script injection
 
 - `scripts` on a consent type are only injected once that type is accepted (`_injectConsentScripts`), and never duplicated (`_injectScript` checks for an existing `<script src="...">` first).
@@ -189,8 +202,8 @@ Styling lives in `.cm-embed` / `.cm-embed-notice` / `.cm-embed-consent-btn` in `
 
 ## UI structure & positioning
 
-- `icon.position`: `'bottomLeft' | 'bottomRight'` (CSS class `cm-pos-bottom-left` / `cm-pos-bottom-right`).
-- `prompt.position` (banner): `'center' | 'bottomLeft' | 'bottomCenter' | 'bottomRight'`.
+- `icon.position`: `'bottomLeft' | 'bottomRight'` (CSS class `cm-pos-bottom-left` / `cm-pos-bottom-right`, offset from the edge by `--iconOffset` — see "Styling" below).
+- `prompt.position` (banner): `'center' | 'bottomLeft' | 'bottomCenter' | 'bottomRight'`. Every mapped class (`cm-pos-center`, `cm-pos-bottom-left`, `cm-pos-bottom-center`, `cm-pos-bottom-right`) has an explicit CSS rule — `bottomRight` isn't just riding on `#cm-banner`'s base `bottom/right` values by coincidence.
 - `backdrop.show`: boolean — dims/blurs the page and blocks interaction while the banner or modal is open; clicking it "nudges" (shakes) the open panel instead of closing it.
 - Cookie icon: hidden by default (`display: none`), shown once the banner is dismissed or when the visitor previously consented, and clicking it toggles the preferences modal.
 - Accessibility: focus is trapped inside whichever panel (banner or modal) is open via a manual Tab/Shift+Tab handler, `Escape` closes the modal, focus moves to the first actionable button on open, and each button supports a separate `*AccessibleLabel` string for `aria-label`.
@@ -202,10 +215,23 @@ All visual tokens are CSS custom properties set on `#cm-wrapper` in `consent-man
 ```css
 --boxShadow, --fontFamily, --primaryColor, --backgroundColor,
 --textColor, --backdropBackgroundColor, --backdropBackgroundBlur,
---iconColor, --iconBackgroundColor
+--iconColor, --iconBackgroundColor, --iconOffset
 ```
 
 Override these (e.g. in a page-level stylesheet loaded after `consent-manager.css`) to reskin the banner/modal/icon without touching the JS. Layout classes (`cm-pos-*`, `cm-loaded`, `cm-nudge`) are toggled by the JS at the moments described above.
+
+### Fonts
+
+`--fontFamily` resolves in two tiers, since this codebase is reused across sites that don't share a design system:
+
+1. **`config.theme.fontFamily`**, if passed to `init()` — `createWrapper()` sets it as an inline `style.setProperty('--fontFamily', ...)` on `#cm-wrapper`, which wins over the CSS default. Value can be a literal font stack or a `var(--xyz)` reference to a variable the host site already defines (e.g. mu.se passes `var(--_typography---body)`, its Webflow-generated typography variable — see README.txt).
+2. **CSS default in `consent-manager.css`** if no `theme.fontFamily` is given: a system font stack (`-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif`) — zero network requests.
+
+Never make the fallback a Google Fonts (or other third-party CDN) reference. The banner renders before any consent decision, so it can't be gated behind consent itself — a `fonts.googleapis.com`/`fonts.gstatic.com` request at that point would send the visitor's IP to Google pre-consent. A project wanting a non-system branded font should self-host the font file(s) (same origin as the site, `@font-face` + `font-display: swap`) and pass that family name/variable via `theme.fontFamily` instead.
+
+### Icon offset
+
+`--iconOffset` follows the same two-tier pattern as `--fontFamily`: `config.theme.iconOffset` (a CSS length or a `var(--xyz)` reference, e.g. mu.se passes `var(--_utilities---axis--x-lg)`) wins if passed to `init()`, otherwise `consent-manager.css` defaults to a generic `20px` not tied to any host site's spacing scale. It controls how far the cookie icon sits from whichever edge `icon.position` puts it on (`#cm-icon.cm-pos-bottom-left`/`-bottom-right`).
 
 ## Text customization
 
