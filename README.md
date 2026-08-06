@@ -15,3 +15,7 @@ A dependency-free, vanilla JS cookie consent banner with Google Consent Mode (`g
 | [`consent/consent-manager.css`](consent/consent-manager.css) | All styling. |
 | [`consent/README.txt`](consent/README.txt) | Embed snippet. |
 | [`consent/HOW_IT_WORKS.md`](consent/HOW_IT_WORKS.md) | Technical deep-dive. |
+
+## License
+
+All rights reserved — see [LICENSE](LICENSE). This repository is source-available for review/audit, not licensed for reuse on other sites without written authorization.

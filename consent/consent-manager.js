@@ -1,3 +1,10 @@
+/*!
+ * Copyright (c)  2026 Muse Group. All Rights Reserved.
+ * Source-available for review/audit only — not licensed for reuse,
+ * deployment, or redistribution on any other site without written
+ * authorization. See LICENSE at the repository root, or contact
+ * [CONTACT EMAIL].
+ */
 'use strict';
 
 class ConsentManager {
@@ -229,7 +236,10 @@ class ConsentManager {
     const template =
       this.config.text?.embed?.description ||
       "If you'd like to view this embedded content, accept {{label}} cookies below.";
-    return template.replace(/\{\{label\}\}/g, consentType.label || consentType.id);
+    return template.replace(
+      /\{\{label\}\}/g,
+      consentType.label || consentType.id,
+    );
   }
 
   // ----------------------------------------------------------------
@@ -462,10 +472,16 @@ class ConsentManager {
     this.wrapper = document.createElement('div');
     this.wrapper.id = 'cm-wrapper';
     if (this.config.theme?.fontFamily) {
-      this.wrapper.style.setProperty('--fontFamily', this.config.theme.fontFamily);
+      this.wrapper.style.setProperty(
+        '--fontFamily',
+        this.config.theme.fontFamily,
+      );
     }
     if (this.config.theme?.iconOffset) {
-      this.wrapper.style.setProperty('--iconOffset', this.config.theme.iconOffset);
+      this.wrapper.style.setProperty(
+        '--iconOffset',
+        this.config.theme.iconOffset,
+      );
     }
     document.body.insertBefore(this.wrapper, document.body.firstChild);
   }
